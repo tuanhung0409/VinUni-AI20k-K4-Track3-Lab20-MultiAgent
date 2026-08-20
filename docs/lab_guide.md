@@ -113,5 +113,30 @@ Cách khắc phục (chọn 1 trong 3):
 
 Mỗi nhóm trả lời 2 câu:
 
-1. Case nào nên dùng multi-agent? Vì sao?
-2. Case nào không nên dùng multi-agent? Vì sao?
+### 1. Case nào NÊN dùng multi-agent? Vì sao?
+
+**Nên dùng trong các trường hợp:**
+1. **Tác vụ nghiên cứu sâu & tổng hợp phức tạp (Deep Research & Complex Multi-Hop Synthesis)**:
+   - *Ví dụ*: Viết báo cáo khoa học, phân tích kiến trúc kỹ thuật đa chiều, thẩm định pháp lý/y tế.
+   - *Vì sao*: Đòi hỏi **sự phân vai chuyên biệt (Role Specialization)** giữa các công đoạn: Thu thập bằng chứng (*Researcher*) $\rightarrow$ Phản biện, so sánh trade-off (*Analyst*) $\rightarrow$ Biên tập chuyên nghiệp (*Writer*). Việc phân tách giúp tránh hiện tượng bão hòa ngữ cảnh (*context saturation*) và giảm thiểu tối đa hiện tượng tự huyễn hoặc (*hallucination*) khi một LLM đơn lẻ phải ôm đồm tất cả các vai trò.
+2. **Yêu cầu kiểm tra chéo và bảo toàn nguồn gốc nghiêm ngặt (Strict Provenance & Verification)**:
+   - *Ví dụ*: Đánh giá rủi ro tài chính, audit bảo mật hệ thống.
+   - *Vì sao*: Cần một Agent độc lập (*Critic/Verifier*) đóng vai trò kiểm toán, so sánh từng luận điểm với bằng chứng thực tế trước khi xuất bản kết quả cuối cùng.
+3. **Các tiểu tác vụ có thể phân rã và chạy song song (Parallelizable Subtasks)**:
+   - *Ví dụ*: Đồng thời phân tích 5 khía cạnh độc lập của một bài toán lớn (Bảo mật, Chi phí, Hiệu năng, Tính mở rộng, Pháp lý) qua mô hình Map-Reduce.
+
+---
+
+### 2. Case nào KHÔNG NÊN dùng multi-agent? Vì sao?
+
+**Không nên dùng trong các trường hợp:**
+1. **Tác vụ đơn giản, đường thẳng (Simple / Single-Turn Tasks)**:
+   - *Ví dụ*: Trả lời câu hỏi FAQ thường gặp, tóm tắt đoạn văn ngắn, sửa lỗi ngữ pháp, chuyển đổi định dạng JSON.
+   - *Vì sao*: **Chi phí điều phối (Coordination Overhead)** vượt xa giá trị mang lại. Single-agent baseline hoàn thành trong ~1-3s với chi phí token cực thấp, trong khi multi-agent gây lãng phí token định tuyến và tăng độ trễ không cần thiết.
+2. **Hệ thống yêu cầu phản hồi thời gian thực với độ trễ cực thấp (Ultra Low-Latency / Real-Time SLA)**:
+   - *Ví dụ*: Chatbot chăm sóc khách hàng tương tác trực tiếp, Voice AI Agents giao tiếp giọng nói (cần độ trễ < 1-2s).
+   - *Vì sao*: Luồng multi-agent tuần tự qua nhiều bước LLM khiến độ trễ tích lũy tăng lên 20-45s, gây trải nghiệm gián đoạn và khó chịu cho người dùng cuối.
+3. **Ngân sách tài nguyên và token bị giới hạn nghiêm ngặt (Tight Token Budget)**:
+   - *Ví dụ*: Ứng dụng xử lý hàng triệu requests/ngày với kinh phí hạ tầng thấp.
+   - *Vì sao*: Multi-agent tiêu hao lượng token gấp 3-5 lần do phải truyền lại toàn bộ State/Notes giữa các bước chuyển giao (handoffs).
+

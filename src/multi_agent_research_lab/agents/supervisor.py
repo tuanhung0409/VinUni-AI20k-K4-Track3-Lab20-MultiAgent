@@ -1,7 +1,7 @@
-"""Supervisor / router skeleton."""
+"""Supervisor / router agent implementation."""
 
 from multi_agent_research_lab.agents.base import BaseAgent
-from multi_agent_research_lab.core.errors import StudentTodoError
+from multi_agent_research_lab.core.config import get_settings
 from multi_agent_research_lab.core.state import ResearchState
 
 
@@ -11,12 +11,37 @@ class SupervisorAgent(BaseAgent):
     name = "supervisor"
 
     def run(self, state: ResearchState) -> ResearchState:
-        """Update `state.route_history` with the next route.
+        """Inspect state and determine the next agent route.
 
-        TODO(student): Implement routing policy. Suggested steps:
-        - Inspect request, current notes, and missing fields.
-        - Choose one of: researcher, analyst, writer, done.
-        - Enforce max iterations and failure fallback.
+        Routing policy:
+        1. If max iterations reached or final answer exists -> 'done'
+        2. If sources or research notes are missing -> 'researcher'
+        3. If analysis notes are missing -> 'analyst'
+        4. If final answer is missing -> 'writer'
+        5. Otherwise -> 'done'
         """
+        settings = get_settings()
 
-        raise StudentTodoError("TODO(student): implement SupervisorAgent.run")
+        if state.iteration >= settings.max_iterations or state.final_answer is not None:
+            next_route = "done"
+        elif not state.sources and not state.research_notes:
+            next_route = "researcher"
+        elif not state.analysis_notes:
+            next_route = "analyst"
+        elif state.final_answer is None:
+            next_route = "writer"
+        else:
+            next_route = "done"
+
+        state.record_route(next_route)
+        state.add_trace_event(
+            name="supervisor_decision",
+            payload={
+                "next_route": next_route,
+                "iteration": state.iteration,
+                "has_sources": bool(state.sources or state.research_notes),
+                "has_analysis": bool(state.analysis_notes),
+                "has_final_answer": bool(state.final_answer),
+            },
+        )
+        return state

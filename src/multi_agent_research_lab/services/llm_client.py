@@ -1,11 +1,11 @@
-"""LLM client abstraction.
-
-Production note: agents should depend on this interface instead of importing an SDK directly.
-"""
+"""LLM client abstraction – backed by OpenRouter with LangSmith tracing support."""
 
 from dataclasses import dataclass
 
-from multi_agent_research_lab.core.errors import StudentTodoError
+from openai import OpenAI
+
+from multi_agent_research_lab.core.config import get_settings
+from multi_agent_research_lab.observability.tracing import setup_tracing
 
 
 @dataclass(frozen=True)
@@ -17,13 +17,50 @@ class LLMResponse:
 
 
 class LLMClient:
-    """Provider-agnostic LLM client skeleton."""
+    """Provider-agnostic LLM client backed by OpenRouter with LangSmith integration."""
+
+    _OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+
+    def __init__(self, model: str | None = None) -> None:
+        setup_tracing()
+        settings = get_settings()
+        api_key = settings.openrouter_api_key
+        if not api_key:
+            raise ValueError(
+                "OPENROUTER_API_KEY is not set. Add it to your .env file or environment variables."
+            )
+        self._model = model or settings.openrouter_model
+
+        raw_client = OpenAI(
+            api_key=api_key,
+            base_url=self._OPENROUTER_BASE_URL,
+        )
+
+        # Wrap OpenAI client with LangSmith if configured
+        if settings.langsmith_api_key:
+            try:
+                from langsmith.wrappers import wrap_openai
+
+                self._client = wrap_openai(raw_client)
+            except Exception:
+                self._client = raw_client
+        else:
+            self._client = raw_client
 
     def complete(self, system_prompt: str, user_prompt: str) -> LLMResponse:
-        """Return a model completion.
+        """Return a model completion from OpenRouter."""
+        response = self._client.chat.completions.create(
+            model=self._model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        )
+        choice = response.choices[0]
+        usage = response.usage
 
-        TODO(student): Connect OpenAI, Azure OpenAI, or another provider.
-        Keep retry, timeout, and token logging here rather than inside agents.
-        """
-
-        raise StudentTodoError("TODO(student): implement LLMClient.complete")
+        return LLMResponse(
+            content=choice.message.content or "",
+            input_tokens=usage.prompt_tokens if usage else None,
+            output_tokens=usage.completion_tokens if usage else None,
+        )
